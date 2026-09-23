@@ -209,7 +209,10 @@ OUTPUT RULES
 export async function callGemini({ frames, audio, meta }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw Object.assign(new Error("GEMINI_API_KEY is not set"), { status: 500 });
-  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  // Comma-separated list: the first model is preferred, the rest are fallbacks when it's busy or out of quota.
+  const models = (process.env.GEMINI_MODEL || DEFAULT_MODELS)
+    .split(",").map((s) => s.trim()).filter(Boolean);
+  for (const m of DEFAULT_MODELS.split(",")) if (!models.includes(m)) models.push(m);
 
   const parts = [{ text: buildPrompt(meta) }, { text: "VIDEO FRAMES (timestamp before each frame):" }];
   for (const f of frames) {
@@ -231,19 +234,52 @@ export async function callGemini({ frames, audio, meta }) {
     },
   };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify(body),
-  });
+  const payload = JSON.stringify(body);
+  const deadline = Date.now() + 50_000; // stay inside the 60 s function limit
+  let lastStatus = 0;
 
-  if (r.status === 429) throw Object.assign(new Error("The free AI quota for today is used up. Please try again later."), { status: 429 });
-  if (!r.ok) {
-    const text = await r.text();
-    throw Object.assign(new Error(`AI request failed (${r.status}): ${text.slice(0, 300)}`), { status: 502 });
+  for (const model of models) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (Date.now() > deadline - 8_000) break;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      let r;
+      try {
+        r = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          body: payload,
+          signal: AbortSignal.timeout(Math.max(5_000, deadline - Date.now())),
+        });
+      } catch (e) {
+        console.warn(`gemini ${model} network/timeout:`, e.message);
+        lastStatus = 504;
+        continue;
+      }
+      if (r.ok) return parseGeminiResponse(await r.json(), model);
+
+      lastStatus = r.status;
+      const errText = await r.text();
+      console.warn(`gemini ${model} attempt ${attempt + 1} -> ${r.status}: ${errText.slice(0, 200)}`);
+      // Bad key / bad request: no point trying other models.
+      if (r.status === 400 || r.status === 401 || r.status === 403) {
+        throw Object.assign(new Error(`AI request failed (${r.status}). Check the GEMINI_API_KEY setting.`), { status: 502 });
+      }
+      // Quota used up or model not available: move on to the next model right away.
+      if (r.status === 429 || r.status === 404) break;
+      // Busy (503/500): short pause, then retry the same model once.
+      await new Promise((res) => setTimeout(res, 1500 + attempt * 1500));
+    }
   }
-  const data = await r.json();
+
+  if (lastStatus === 429) {
+    throw Object.assign(new Error("Today's free AI quota is used up. Please try again tomorrow."), { status: 429 });
+  }
+  throw Object.assign(new Error("The AI is very busy right now. Please try again in a minute."), { status: 503 });
+}
+
+const DEFAULT_MODELS = "gemini-3.8-flash,gemini-3.7-flash,gemini-3.5-flash";
+
+function parseGeminiResponse(data, model) {
   const cand = data.candidates?.[0];
   const text = cand?.content?.parts?.map((p) => p.text || "").join("") || "";
   if (!text) {
