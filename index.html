@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReelRadar – Reel Analyzer</title>
+<meta name="description" content="Upload your Instagram Reel before you post it. ReelRadar checks your hook, pacing, captions and audio, predicts how it will perform, and tells you exactly what to fix.">
+<meta property="og:title" content="ReelRadar – Know if your reel will work before you post">
+<meta property="og:description" content="Free AI reel analyzer. Hook score, pacing, captions, predicted performance and 3 fixes.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='%23ff3d6e'/><stop offset='1' stop-color='%237c3aed'/></linearGradient></defs><circle cx='50' cy='50' r='45' fill='url(%23g)'/></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="logo" href="./"><i class="dot"></i> ReelRadar</a>
+    <nav><a href="feedback.html">Report results</a><a href="privacy.html">Privacy</a></nav>
+  </header>
+
+  <section class="hero">
+    <h1>Know if your reel will <span>work</span> before you post it.</h1>
+    <p>Upload a reel. In about 30 seconds you get a hook score, pacing check, caption fixes, and a performance prediction compared to your usual reels.</p>
+  </section>
+
+  <!-- Upload form -->
+  <section class="card" id="form-card">
+    <h2>1. Upload your reel</h2>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept="video/mp4,video/quicktime,video/webm,video/*">
+      <strong>Tap to choose a video</strong>
+      <small>MP4 or MOV · up to 3 minutes · up to 150 MB</small>
+      <div id="file-chip" class="file-chip hidden"><span id="file-name"></span></div>
+    </label>
+
+    <h3>2. Tell us about it</h3>
+    <div class="grid">
+      <label class="field"><span>Niche</span>
+        <select id="niche">
+          <option value="general">General / mixed</option>
+          <option value="fitness">Fitness</option>
+          <option value="food">Food</option>
+          <option value="comedy">Comedy / skits</option>
+          <option value="education">Education / explainers</option>
+          <option value="finance">Finance</option>
+          <option value="tech">Tech</option>
+          <option value="beauty">Beauty / skincare</option>
+          <option value="fashion">Fashion</option>
+          <option value="travel">Travel</option>
+          <option value="motivation">Motivation</option>
+          <option value="business">Business / marketing</option>
+          <option value="music">Music</option>
+          <option value="dance">Dance</option>
+          <option value="gaming">Gaming</option>
+          <option value="lifestyle">Lifestyle / vlog</option>
+          <option value="parenting">Parenting</option>
+          <option value="art">Art / DIY</option>
+        </select>
+      </label>
+      <label class="field"><span>Report language</span>
+        <select id="language">
+          <option value="en">English</option>
+          <option value="hinglish">Hinglish</option>
+          <option value="hi">हिंदी</option>
+        </select>
+      </label>
+      <label class="field"><span>Your followers (optional)</span>
+        <input type="number" id="followers" min="0" placeholder="e.g. 4500" inputmode="numeric">
+      </label>
+      <label class="field"><span>Usual views per reel (optional)</span>
+        <input type="number" id="usual_views" min="0" placeholder="e.g. 2000" inputmode="numeric">
+      </label>
+    </div>
+    <label class="field" style="margin-top:12px"><span>Planned caption (optional)</span>
+      <textarea id="caption" maxlength="2200" placeholder="Paste the caption you plan to use"></textarea>
+    </label>
+    <label class="field" style="margin-top:12px"><span>Planned hashtags (optional)</span>
+      <input type="text" id="hashtags" maxlength="500" placeholder="#fitness #gymmotivation ...">
+    </label>
+    <label class="check"><input type="checkbox" id="will_add_music"> I'll add music / trending audio inside the Instagram app (so the file has only my raw audio)</label>
+    <label class="check"><input type="checkbox" id="consent"> I understand the frames and audio from this reel are analyzed by an AI service (Google Gemini) and the analysis results are saved to improve predictions. <a href="privacy.html" target="_blank">Privacy</a></label>
+
+    <button class="btn btn-primary" id="analyze" disabled>Analyze my reel</button>
+    <p class="notice">Your full video never leaves your phone. The browser extracts a few frames and the audio track, and only those are sent for analysis.</p>
+    <div id="form-error" class="error hidden"></div>
+  </section>
+
+  <!-- Progress -->
+  <section class="card hidden" id="progress-card">
+    <h2>Analyzing…</h2>
+    <ul class="steps" id="steps">
+      <li data-step="read">Reading the video</li>
+      <li data-step="frames">Extracting key frames (hook first)</li>
+      <li data-step="audio">Extracting the audio track</li>
+      <li data-step="ai">AI is watching your reel (20–60 s)</li>
+    </ul>
+    <div class="frames-preview" id="frames-preview"></div>
+  </section>
+
+  <!-- Report -->
+  <section id="report" class="hidden"></section>
+
+  <!-- History -->
+  <section class="card" id="history-card">
+    <h2>Your recent reels</h2>
+    <p class="small">Saved on this device only. After you post a reel, come back and report its views – that's how ReelRadar learns.</p>
+    <ul class="history" id="history"></ul>
+  </section>
+
+  <footer>Made for creators. Predictions are estimates, not guarantees. <a href="privacy.html">Privacy</a></footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

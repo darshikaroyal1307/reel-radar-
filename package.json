@@ -1,0 +1,13 @@
+{
+  "name": "reelradar",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI reel analyzer: upload a reel, get a performance prediction and fixes before you post.",
+  "scripts": {
+    "dev": "node dev.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

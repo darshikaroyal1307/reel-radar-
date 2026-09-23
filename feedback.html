@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReelRadar – Report Results</title>
+<meta name="description" content="Tell ReelRadar how your reel actually performed so predictions get better.">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="logo" href="./"><i class="dot"></i> ReelRadar</a>
+    <nav><a href="./">Analyze a reel</a><a href="privacy.html">Privacy</a></nav>
+  </header>
+
+  <section class="hero">
+    <h1>How did your reel <span>actually</span> do?</h1>
+    <p>Enter the real numbers from Instagram Insights. Every result you report makes the predictions smarter.</p>
+  </section>
+
+  <section class="card">
+    <div id="lookup">
+      <label class="field"><span>Analysis ID or results link</span>
+        <input type="text" id="id" placeholder="Paste the ID from your report">
+      </label>
+      <button class="btn btn-secondary" id="load" style="margin-top:10px">Load</button>
+    </div>
+    <div id="info" class="hidden" style="margin-top:14px"></div>
+    <div id="error" class="error hidden"></div>
+  </section>
+
+  <section class="card hidden" id="form-card">
+    <h2>Real results</h2>
+    <div class="grid">
+      <label class="field"><span>Views *</span><input type="number" id="views" min="0" inputmode="numeric" placeholder="e.g. 12400"></label>
+      <label class="field"><span>Days since you posted</span><input type="number" id="days" min="0" inputmode="numeric" placeholder="e.g. 7"></label>
+      <label class="field"><span>Your usual views per reel</span><input type="number" id="usual_views" min="0" inputmode="numeric" placeholder="e.g. 2000"></label>
+      <label class="field"><span>Likes</span><input type="number" id="likes" min="0" inputmode="numeric"></label>
+      <label class="field"><span>Comments</span><input type="number" id="comments" min="0" inputmode="numeric"></label>
+      <label class="field"><span>Shares</span><input type="number" id="shares" min="0" inputmode="numeric"></label>
+      <label class="field"><span>Saves</span><input type="number" id="saves" min="0" inputmode="numeric"></label>
+    </div>
+    <label class="field" style="margin-top:12px"><span>Anything you changed after the analysis? (optional)</span>
+      <textarea id="note" maxlength="500" placeholder="e.g. used hook #2, cut the intro"></textarea>
+    </label>
+    <button class="btn btn-primary" id="submit">Submit results</button>
+    <div id="done" class="success hidden"></div>
+  </section>
+
+  <footer><a href="./">Back to ReelRadar</a></footer>
+</div>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const LEVEL_TEXT = { below_usual: "below your usual", around_usual: "around your usual", above_usual: "above your usual", breakout: "breakout potential" };
+  let currentId = null;
+
+  function showError(m) { $("error").textContent = m; $("error").classList.remove("hidden"); }
+  function parseId(v) { const m = String(v).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i); return m ? m[0] : null; }
+
+  async function load(id) {
+    $("error").classList.add("hidden");
+    const r = await fetch(`/api/feedback?id=${encodeURIComponent(id)}`);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return showError(d.error || "Could not load this analysis.");
+    currentId = id;
+    const a = d.analysis;
+    $("info").innerHTML = `<b>Predicted:</b> ${a.overall_score}/100 · ${esc(LEVEL_TEXT[a.predicted_level] || a.predicted_level)} · ${esc(a.niche)} · analyzed ${new Date(a.created_at).toLocaleDateString()}<br><span class="small">${esc(a.summary)}</span>` +
+      (d.feedback ? `<div class="success">You already reported ${d.feedback.views} views for this reel. You can submit an update below.</div>` : "");
+    $("info").classList.remove("hidden");
+    if (a.usual_views) $("usual_views").value = a.usual_views;
+    $("form-card").classList.remove("hidden");
+  }
+
+  $("load").addEventListener("click", () => { const id = parseId($("id").value); id ? load(id) : showError("That doesn't look like a valid analysis ID."); });
+
+  $("submit").addEventListener("click", async () => {
+    if (!currentId) return;
+    const v = (id) => $(id).value.trim();
+    if (!(Number(v("views")) > 0)) return showError("Please enter the view count.");
+    $("submit").disabled = true;
+    try {
+      const r = await fetch("/api/feedback", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: currentId, views: v("views"), usual_views: v("usual_views"), likes: v("likes"), comments: v("comments"), shares: v("shares"), saves: v("saves"), days_since_post: v("days"), note: v("note") }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Could not save.");
+      const ratio = d.performance_ratio;
+      $("done").innerHTML = `Thank you! Saved.` + (ratio ? ` This reel did <b>${ratio.toFixed(1)}×</b> your usual views.` : "") + ` <a href="./">Analyze another reel</a>`;
+      $("done").classList.remove("hidden");
+    } catch (e) { showError(e.message); }
+    finally { $("submit").disabled = false; }
+  });
+
+  const fromUrl = parseId(new URLSearchParams(location.search).get("id") || "");
+  if (fromUrl) { $("id").value = fromUrl; load(fromUrl); }
+})();
+</script>
+</body>
+</html>
