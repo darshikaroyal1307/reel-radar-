@@ -209,7 +209,7 @@ OUTPUT RULES
 export async function callGemini({ frames, audio, meta }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw Object.assign(new Error("GEMINI_API_KEY is not set"), { status: 500 });
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
   const parts = [{ text: buildPrompt(meta) }, { text: "VIDEO FRAMES (timestamp before each frame):" }];
   for (const f of frames) {
